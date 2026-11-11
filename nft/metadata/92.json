@@ -1,0 +1,27 @@
+{
+  "name": "SEOLYSIUM 100 #92 — The Star",
+  "description": "The SEOLYSIUM 100 — one hundred engraved-gold editions from SEOLysium, the free on-page SEO checker. Artwork: The Star. Aura: Emerald. Frame: Silver. Mint price: 0.1 HYPE.",
+  "image": "https://seocheckr.xyz/nft/images/92.jpg",
+  "attributes": [
+    {
+      "trait_type": "Artwork",
+      "value": "The Star"
+    },
+    {
+      "trait_type": "Aura",
+      "value": "Emerald"
+    },
+    {
+      "trait_type": "Frame",
+      "value": "Silver"
+    },
+    {
+      "trait_type": "Edition",
+      "value": "17/25"
+    },
+    {
+      "trait_type": "Serial",
+      "value": 92
+    }
+  ]
+}

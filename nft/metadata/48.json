@@ -1,0 +1,27 @@
+{
+  "name": "SEOLYSIUM 100 #48 — The Orbit",
+  "description": "The SEOLYSIUM 100 — one hundred engraved-gold editions from SEOLysium, the free on-page SEO checker. Artwork: The Orbit. Aura: Azure. Frame: Obsidian. Mint price: 0.1 HYPE.",
+  "image": "https://seocheckr.xyz/nft/images/48.jpg",
+  "attributes": [
+    {
+      "trait_type": "Artwork",
+      "value": "The Orbit"
+    },
+    {
+      "trait_type": "Aura",
+      "value": "Azure"
+    },
+    {
+      "trait_type": "Frame",
+      "value": "Obsidian"
+    },
+    {
+      "trait_type": "Edition",
+      "value": "23/25"
+    },
+    {
+      "trait_type": "Serial",
+      "value": 48
+    }
+  ]
+}

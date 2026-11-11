@@ -1,0 +1,27 @@
+{
+  "name": "SEOLYSIUM 100 #21 — The Beam",
+  "description": "The SEOLYSIUM 100 — one hundred engraved-gold editions from SEOLysium, the free on-page SEO checker. Artwork: The Beam. Aura: Gold. Frame: Obsidian. Mint price: 0.1 HYPE.",
+  "image": "https://seocheckr.xyz/nft/images/21.jpg",
+  "attributes": [
+    {
+      "trait_type": "Artwork",
+      "value": "The Beam"
+    },
+    {
+      "trait_type": "Aura",
+      "value": "Gold"
+    },
+    {
+      "trait_type": "Frame",
+      "value": "Obsidian"
+    },
+    {
+      "trait_type": "Edition",
+      "value": "21/25"
+    },
+    {
+      "trait_type": "Serial",
+      "value": 21
+    }
+  ]
+}

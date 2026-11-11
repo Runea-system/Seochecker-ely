@@ -1,0 +1,27 @@
+{
+  "name": "SEOLYSIUM 100 #67 — The Temple",
+  "description": "The SEOLYSIUM 100 — one hundred engraved-gold editions from SEOLysium, the free on-page SEO checker. Artwork: The Temple. Aura: Emerald. Frame: Silver. Mint price: 0.1 HYPE.",
+  "image": "https://seocheckr.xyz/nft/images/67.jpg",
+  "attributes": [
+    {
+      "trait_type": "Artwork",
+      "value": "The Temple"
+    },
+    {
+      "trait_type": "Aura",
+      "value": "Emerald"
+    },
+    {
+      "trait_type": "Frame",
+      "value": "Silver"
+    },
+    {
+      "trait_type": "Edition",
+      "value": "17/25"
+    },
+    {
+      "trait_type": "Serial",
+      "value": 67
+    }
+  ]
+}
