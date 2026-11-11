@@ -6,7 +6,7 @@
     }
   },
   "settings": {
-    "evmVersion": "shanghai",
+    "evmVersion": "paris",
     "optimizer": {
       "enabled": true,
       "runs": 200
