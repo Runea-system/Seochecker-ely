@@ -385,6 +385,15 @@
         background:rgba(233,188,99,.06);
       }
       .mint-note.on{display:block}
+      .mint-actions{display:flex;flex-direction:column;gap:10px}
+      .mint-wallet{
+        display:none;font-family:var(--mono);font-size:13px;color:var(--ink-dim);
+        text-align:center;word-break:break-all;margin:0;
+      }
+      .mint-wallet.on{display:block}
+      .mint-wallet b{color:var(--gold-2);font-weight:600}
+      .mint-links{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+      .mint-links a{font-family:var(--mono);font-size:13px;color:var(--gold-2)}
       .nft-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
       .nft-card{border:1px solid var(--line);border-radius:16px;background:var(--panel);overflow:hidden}
       .nft-card img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}
@@ -815,7 +824,7 @@
               <p class="kicker">The collection</p>
               <h2 class="title">The SEOLYSIUM <em>100.</em></h2>
             </div>
-            <p class="side">SEOLYSIUM's own NFT collection: <strong>100 pieces</strong> of engraved gold-on-teal emblem art — the lighthouse, the orbit, the temple, the star. Every piece mints at the same flat price: <strong>0.1 HYPE</strong>. No tiers, no surprises.</p>
+            <p class="side">SEOLYSIUM's own NFT collection: <strong>100 pieces</strong> of engraved gold-on-teal emblem art — the lighthouse, the orbit, the temple, the star. Every piece mints at the same flat price: <strong>0.1 HYPE</strong> on the <strong>Elysium network</strong>. No tiers, no surprises.</p>
           </div>
 
           <div class="nft-layout">
@@ -824,6 +833,10 @@
               <div class="spec"><span class="k">TOTAL SUPPLY</span><span class="v">100 <small>NFTs</small></span></div>
               <div class="spec"><span class="k">MINT PRICE</span><span class="v gold">0.1 HYPE</span></div>
               <div class="spec"><span class="k">FULL COLLECTION</span><span class="v">10 HYPE <small>100 × 0.1</small></span></div>
+              <div class="spec"><span class="k">NETWORK</span><span class="v">Elysium <small>chain 99901</small></span></div>
+              <div class="spec"><span class="k">CONTRACT</span><span class="v"><a href="https://elyscan.live/address/0xe879d456BB0A5B0De050087e8eC844b36390bF05" target="_blank" rel="noopener" style="color:var(--gold-2);text-decoration:none">0xe879…bF05 ↗</a></span></div>
+              <div class="spec"><span class="k">MINTED</span><span class="v" id="mintedCount">– / 100</span></div>
+              <div class="spec"><span class="k">MINT STATE</span><span class="v gold" id="mintState">At launch</span></div>
               <div class="mint-body">
                 <div class="qty-row">
                   <span class="lbl">Quantity</span>
@@ -834,8 +847,13 @@
                   </span>
                 </div>
                 <div class="mint-total"><span class="k">TOTAL</span><span class="v" id="mintTotal">0.1 HYPE</span></div>
-                <button class="btn btn-gold" type="button" id="mintBtn" style="width:100%">Mint</button>
-                <p class="mint-note" id="mintNote" role="status"></p>
+                <div class="mint-actions">
+                  <button class="btn btn-ghost" type="button" id="connectBtn" style="width:100%">Connect wallet</button>
+                  <p class="mint-wallet" id="walletLine"></p>
+                  <button class="btn btn-gold" type="button" id="mintBtn" style="width:100%" disabled>Mint</button>
+                </div>
+                <p class="mint-note on" id="mintNote" role="status">Reading the contract on the Elysium network…</p>
+                <div class="mint-links" id="mintLinks"></div>
               </div>
             </div>
 
@@ -909,7 +927,7 @@
             </details>
             <details>
               <summary>What is the SEOLYSIUM 100 NFT collection?<span class="plus" aria-hidden="true">+</span></summary>
-              <div class="body"><p>It's SEOLYSIUM's own collection of 100 NFTs in the site's signature style — engraved gold emblems on deep teal. The mint price is a flat 0.1 HYPE per piece. The contract address will be published in the mint panel above before minting opens; until it appears there, no mint is live, and any address elsewhere claiming to sell SEOLYSIUM 100 pieces is not official.</p></div>
+              <div class="body"><p>It's SEOLYSIUM's own collection of 100 NFTs in the site's signature style — engraved gold emblems on deep teal. The mint runs on the Elysium network at a flat 0.1 HYPE per piece, and the contract is deployed — its address is shown in the mint panel above, which reads the live minted count and open/closed state straight from the chain. If the panel says the mint is not open yet, it isn't: wait for it to flip to open there, and treat any other address claiming to sell SEOLYSIUM 100 pieces as not official.</p></div>
             </details>
           </div>
         </div>
@@ -1407,33 +1425,290 @@
     })();
     </script>
 
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
     <script>
     (function(){
       "use strict";
-      var PRICE = 0.1, MAX = 100, qty = 1;
+      /* ============================================================
+         SEOLYSIUM 100 — mint panel · Elysium network
+         Deployed contract (verified on-chain, chain 99901).
+         The panel always renders the live totalMinted()/mintOpen()
+         state read from this contract — nothing is hardcoded.
+         ============================================================ */
+      const CONTRACT_ADDRESS = "0xe879d456BB0A5B0De050087e8eC844b36390bF05";
+      var CHAIN_ID = 99901;
+      var CHAIN_ID_HEX = "0x1863D";
+      var RPC_URL = "https://rpc.elysium.kinetiq.xyz";
+      var EXPLORER = "https://elyscan.live";
+      var PRICE = 0.1, MAX_SUPPLY = 100, MAX_PER_TX = 20;
+      var ABI = [
+        "function totalMinted() view returns (uint256)",
+        "function mintOpen() view returns (bool)",
+        "function mint(uint256 qty) payable"
+      ];
+
+      var qty = 1;
       var numEl = document.getElementById("qtyNum"),
           totalEl = document.getElementById("mintTotal"),
           minus = document.getElementById("qtyMinus"),
           plus = document.getElementById("qtyPlus"),
           mintBtn = document.getElementById("mintBtn"),
-          note = document.getElementById("mintNote");
-      if(!numEl || !totalEl || !minus || !plus || !mintBtn) return;
+          connectBtn = document.getElementById("connectBtn"),
+          walletLine = document.getElementById("walletLine"),
+          note = document.getElementById("mintNote"),
+          linksEl = document.getElementById("mintLinks"),
+          mintedEl = document.getElementById("mintedCount"),
+          stateEl = document.getElementById("mintState");
+      if(!numEl || !totalEl || !minus || !plus || !mintBtn || !connectBtn) return;
+
+      var walletAddress = null, liveMinted = null, liveOpen = null, minting = false;
+
       function fmt(v){
         return (Math.round(v * 1000) / 1000).toString().replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
       }
-      function render(){
+      function setStatus(msg){
+        note.textContent = msg;
+        note.className = "mint-note on";
+      }
+      function shortAddr(a){
+        return a ? a.slice(0, 6) + "…" + a.slice(-4) : "";
+      }
+      function showWallet(){
+        if(walletAddress){
+          walletLine.innerHTML = "Connected: <b></b> · Elysium network";
+          walletLine.querySelector("b").textContent = shortAddr(walletAddress);
+          walletLine.className = "mint-wallet on";
+          connectBtn.textContent = "Wallet connected";
+        } else {
+          walletLine.className = "mint-wallet";
+          walletLine.textContent = "";
+          connectBtn.textContent = "Connect wallet";
+        }
+      }
+      function updateMintBtn(){
+        var blocked = !CONTRACT_ADDRESS || minting || liveOpen !== true ||
+                      (liveMinted !== null && liveMinted >= MAX_SUPPLY);
+        mintBtn.disabled = !!blocked;
+      }
+      function renderQty(){
         numEl.textContent = String(qty);
         totalEl.textContent = fmt(qty * PRICE) + " HYPE";
         minus.disabled = qty <= 1;
-        plus.disabled = qty >= MAX;
+        plus.disabled = qty >= MAX_SUPPLY;
       }
-      minus.addEventListener("click", function(){ if(qty > 1){ qty--; render(); } });
-      plus.addEventListener("click", function(){ if(qty < MAX){ qty++; render(); } });
-      mintBtn.addEventListener("click", function(){
-        note.textContent = "Minting opens as soon as the collection contract is published in this panel — no contract address has been announced yet. Don't send HYPE to any address claiming to sell SEOLYSIUM 100 pieces in the meantime.";
-        note.className = "mint-note on";
+      minus.addEventListener("click", function(){ if(qty > 1){ qty--; renderQty(); } });
+      plus.addEventListener("click", function(){ if(qty < MAX_SUPPLY){ qty++; renderQty(); } });
+
+      function addTxLink(hash, label){
+        var a = document.createElement("a");
+        a.href = EXPLORER + "/tx/" + hash;
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.textContent = label + " on Elyscan ↗ — tx " + hash.slice(0, 10) + "…";
+        linksEl.appendChild(a);
+      }
+
+      /* ---------- read-only chain state (no wallet needed) ---------- */
+      function refreshOnChain(){
+        if(!CONTRACT_ADDRESS) return;
+        if(typeof ethers === "undefined"){
+          setStatus("The Web3 library could not be loaded — check your connection and reload the page.");
+          return;
+        }
+        var provider = new ethers.JsonRpcProvider(RPC_URL);
+        var read = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+        Promise.all([read.totalMinted(), read.mintOpen()]).then(function(res){
+          liveMinted = Number(res[0]);
+          liveOpen = !!res[1];
+          mintedEl.textContent = liveMinted + " / " + MAX_SUPPLY + " minted";
+          if(liveMinted >= MAX_SUPPLY){
+            stateEl.textContent = "Sold out";
+            setStatus("Sold out — all 100 pieces have been minted.");
+          } else if(liveOpen){
+            stateEl.textContent = "Open";
+            setStatus("Mint is open on the Elysium network — 0.1 HYPE per piece, up to 20 per transaction.");
+          } else {
+            stateEl.textContent = "Closed";
+            setStatus("The contract is live on the Elysium network, but the mint is not open yet.");
+          }
+          updateMintBtn();
+        }).catch(function(){
+          setStatus("Could not read the contract on Elysium right now — try reloading the page.");
+        });
+      }
+
+      /* ---------- wallet ---------- */
+      function ensureElysium(){
+        return window.ethereum.request({ method: "eth_chainId" }).then(function(current){
+          if(current && current.toLowerCase() === CHAIN_ID_HEX.toLowerCase()) return;
+          return window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: CHAIN_ID_HEX }]
+          }).catch(function(err){
+            if(err && err.code === 4902){
+              return window.ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [{
+                  chainId: CHAIN_ID_HEX,
+                  chainName: "Elysium",
+                  nativeCurrency: { name: "HYPE", symbol: "HYPE", decimals: 18 },
+                  rpcUrls: [RPC_URL],
+                  blockExplorerUrls: [EXPLORER]
+                }]
+              });
+            }
+            throw err;
+          });
+        });
+      }
+      function isRejected(err){
+        return !!err && (err.code === 4001 || err.code === "ACTION_REJECTED" ||
+          (err.info && err.info.error && err.info.error.code === 4001));
+      }
+      connectBtn.addEventListener("click", function(){
+        if(typeof window.ethereum === "undefined"){
+          setStatus("No wallet was found in this browser. Install a Web3 wallet (for example MetaMask), then connect — the mint runs on the Elysium network.");
+          return;
+        }
+        if(typeof ethers === "undefined"){
+          setStatus("The Web3 library could not be loaded — check your connection and reload the page.");
+          return;
+        }
+        connectBtn.disabled = true;
+        setStatus("Connecting — approve the request in your wallet…");
+        var provider = new ethers.BrowserProvider(window.ethereum);
+        provider.send("eth_requestAccounts", []).then(function(){
+          return ensureElysium();
+        }).then(function(){
+          return provider.getSigner();
+        }).then(function(signer){
+          return signer.getAddress();
+        }).then(function(addr){
+          walletAddress = addr;
+          showWallet();
+          if(CONTRACT_ADDRESS){
+            setStatus("Wallet connected on Elysium. Pick a quantity and mint.");
+            refreshOnChain();
+          } else {
+            setStatus("Wallet connected and set to the Elysium network.");
+          }
+        }).catch(function(err){
+          if(isRejected(err)) setStatus("Connection rejected in your wallet — nothing was connected.");
+          else setStatus("Could not connect the wallet. Make sure it is unlocked and set to a network it can switch from, then try again.");
+        }).then(function(){
+          connectBtn.disabled = false;
+        });
       });
-      render();
+      if(typeof window.ethereum !== "undefined" && window.ethereum.on){
+        window.ethereum.on("accountsChanged", function(accs){
+          walletAddress = (accs && accs.length) ? accs[0] : null;
+          showWallet();
+        });
+      }
+
+      /* ---------- mint (batched at 20 per transaction) ---------- */
+      mintBtn.addEventListener("click", function(){
+        if(!CONTRACT_ADDRESS || minting) return;
+        if(typeof window.ethereum === "undefined"){
+          setStatus("No wallet was found in this browser. Install a Web3 wallet (for example MetaMask), connect it, then mint.");
+          return;
+        }
+        if(typeof ethers === "undefined"){
+          setStatus("The Web3 library could not be loaded — check your connection and reload the page.");
+          return;
+        }
+        minting = true;
+        updateMintBtn();
+        linksEl.innerHTML = "";
+        var provider = new ethers.BrowserProvider(window.ethereum);
+        var signer;
+        var ready = Promise.resolve();
+        if(!walletAddress){
+          ready = provider.send("eth_requestAccounts", []);
+        }
+        ready.then(function(){
+          return provider.getNetwork();
+        }).then(function(net){
+          if(Number(net.chainId) !== CHAIN_ID){
+            return ensureElysium().then(function(){
+              provider = new ethers.BrowserProvider(window.ethereum);
+              return provider.getNetwork();
+            }).then(function(net2){
+              if(Number(net2.chainId) !== CHAIN_ID){
+                throw new Error("WRONG_NETWORK");
+              }
+            });
+          }
+        }).then(function(){
+          return provider.getSigner();
+        }).then(function(s){
+          signer = s;
+          return signer.getAddress();
+        }).then(function(addr){
+          walletAddress = addr;
+          showWallet();
+          var read = new ethers.Contract(CONTRACT_ADDRESS, ABI, new ethers.JsonRpcProvider(RPC_URL));
+          return Promise.all([read.totalMinted(), read.mintOpen()]);
+        }).then(function(res){
+          liveMinted = Number(res[0]);
+          liveOpen = !!res[1];
+          mintedEl.textContent = liveMinted + " / " + MAX_SUPPLY + " minted";
+          stateEl.textContent = liveMinted >= MAX_SUPPLY ? "Sold out" : (liveOpen ? "Open" : "Closed");
+          if(!liveOpen) throw new Error("MINT_CLOSED");
+          var remaining = MAX_SUPPLY - liveMinted;
+          if(remaining <= 0) throw new Error("SOLD_OUT");
+          if(qty > remaining) throw new Error("TOO_MANY:" + remaining);
+          var contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+          var totalBatches = Math.ceil(qty / MAX_PER_TX);
+          var left = qty, batch = 0;
+          function nextBatch(){
+            if(left <= 0) return Promise.resolve();
+            batch++;
+            var n = Math.min(MAX_PER_TX, left);
+            var value = ethers.parseUnits(String(n), 17); /* n × 0.1 HYPE in wei */
+            setStatus("Batch " + batch + " of " + totalBatches + " (" + n + " NFT" + (n > 1 ? "s" : "") + ") — confirm in your wallet…");
+            return contract.mint(n, { value: value }).then(function(tx){
+              addTxLink(tx.hash, "Batch " + batch);
+              setStatus("Batch " + batch + " of " + totalBatches + " submitted — waiting for confirmation…");
+              return tx.wait();
+            }).then(function(){
+              left -= n;
+              return nextBatch();
+            });
+          }
+          return nextBatch();
+        }).then(function(){
+          setStatus("Done — " + qty + " SEOLYSIUM 100 piece" + (qty > 1 ? "s" : "") + " minted to your wallet on the Elysium network.");
+          refreshOnChain();
+        }).catch(function(err){
+          if(err && err.message === "WRONG_NETWORK") setStatus("Wrong network — switch your wallet to Elysium (chain 99901) and try again.");
+          else if(err && err.message === "MINT_CLOSED") setStatus("Mint is closed — the collection has not opened for minting yet.");
+          else if(err && err.message === "SOLD_OUT") setStatus("Sold out — all 100 pieces have been minted.");
+          else if(err && err.message && err.message.indexOf("TOO_MANY:") === 0) setStatus("Only " + err.message.split(":")[1] + " piece(s) remain — lower the quantity and try again.");
+          else if(isRejected(err)) setStatus("Transaction rejected in your wallet — nothing was minted.");
+          else if(err && err.message && /insufficient funds/i.test(err.message)) setStatus("Insufficient HYPE — your wallet needs more HYPE on the Elysium network to cover the mint plus gas.");
+          else if(err && err.message && /insufficient funds/i.test(err.shortMessage || "")) setStatus("Insufficient HYPE — your wallet needs more HYPE on the Elysium network to cover the mint plus gas.");
+          else setStatus("Mint failed" + (err && (err.shortMessage || err.message) ? ": " + (err.shortMessage || err.message) : ".") );
+        }).then(function(){
+          minting = false;
+          updateMintBtn();
+        });
+      });
+
+      /* ---------- init ---------- */
+      renderQty();
+      showWallet();
+      if(CONTRACT_ADDRESS){
+        mintBtn.disabled = true;
+        stateEl.textContent = "…";
+        setStatus("Reading the contract on the Elysium network…");
+        refreshOnChain();
+      } else {
+        mintBtn.disabled = true;
+        mintedEl.textContent = "– / 100";
+        stateEl.textContent = "At launch";
+        setStatus("Mint opens at launch on the Elysium network.");
+      }
     })();
     </script>
   </body>
